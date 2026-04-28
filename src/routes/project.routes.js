@@ -1,6 +1,36 @@
 import { Router } from "express";
+import {
+    addMemberToProject,
+    createProject,
+    deleteMember,
+    deleteProject,
+    getProjectById,
+    getProjectMembers,
+    getProjects,
+    updateMemberRole,
+    updateProject,
+} from "../controllers/project.controllers.js";
+import { verifyJWT } from "../middlewares/verifyJWT.middleware.js";
 
 const router = Router()
 
+
+
+router.route("/")
+    .get(verifyJWT,getProjects)
+    .post(verifyJWT,createProject)
+
+router.route("/:id")
+    .get(verifyJWT,getProjectById)
+    .patch(verifyJWT,updateProject)
+    .delete(verifyJWT,deleteProject)
+
+router.route("/:id/members")
+    .get(verifyJWT,getProjectMembers)
+    .post(verifyJWT,addMemberToProject)
+
+router.route("/:id/members/:memberId")
+    .delete(verifyJWT,deleteMember)
+    .patch(verifyJWT,updateMemberRole)
 
 export default router;

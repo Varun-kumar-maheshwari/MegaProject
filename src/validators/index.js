@@ -38,9 +38,9 @@ const userPassResetValidator = () => {
             .isLength({min:8}),
         body('newPassword')
             .trim()
-            .notEmpty.withMessage("It is a required field")
+            .notEmpty().withMessage("It is a required field")
             .isLength({min:8})
         ]
 }
 
-export {userRegistrationValidator, userLoginValidator}
+export {userRegistrationValidator, userLoginValidator,userPassResetValidator }

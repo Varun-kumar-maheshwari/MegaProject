@@ -1,0 +1,115 @@
+@baseUrl = http://localhost:8000/api/v1
+@token = your_jwt_token_here
+@projectId = your_project_id_here
+@memberId = your_member_id_here
+
+### ─────────────────────────────────────
+### AUTH (get a token first)
+### ─────────────────────────────────────
+
+### Register
+POST {{baseUrl}}/users/register
+Content-Type: application/json
+
+{
+  "userName": "testuser",
+  "email": "test@example.com",
+  "password": "Password@123"
+}
+
+###
+
+### Login
+POST {{baseUrl}}/users/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "Password@123"
+}
+
+### ─────────────────────────────────────
+### PROJECTS  (all require JWT)
+### ─────────────────────────────────────
+
+### Get all projects
+GET {{baseUrl}}/projects
+
+
+###
+
+### Create a project
+POST {{baseUrl}}/projects
+Content-Type: application/json
+
+{
+  "name": "My Project",
+  "description": "A sample project description"
+}
+
+
+###
+
+### Get project by ID
+GET {{baseUrl}}/projects/{{projectId}}
+
+
+###
+
+### Update project
+PATCH {{baseUrl}}/projects/{{projectId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Updated Project Name",
+  "description": "Updated description"
+}
+
+###
+
+### Delete project
+DELETE {{baseUrl}}/projects/{{projectId}}
+
+
+### ─────────────────────────────────────
+### PROJECT MEMBERS
+### ─────────────────────────────────────
+
+### Get project members
+GET {{baseUrl}}/projects/{{projectId}}/members
+Authorization: Bearer {{token}}
+
+###
+
+### Add member to project
+POST {{baseUrl}}/projects/{{projectId}}/members
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "userId": "member_user_id_here",
+  "role": "member"
+}
+
+###
+
+### Update member role
+PATCH {{baseUrl}}/projects/{{projectId}}/members/{{memberId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "role": "admin"
+}
+
+###
+
+### Remove member from project
+DELETE {{baseUrl}}/projects/{{projectId}}/members/{{memberId}}
+Authorization: Bearer {{token}}
+
+###
+
+### refresh access token
+GET {{baseUrl}}/users/refreshAccessToken

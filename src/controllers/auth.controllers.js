@@ -2,11 +2,12 @@ import { asyncHandler } from "../utils/asyn-handler.js"
 import { User } from "../models/user.models.js";
 import { ApiError } from "../utils/api-error.js";
 import { sendEmailVerificationMail, sendForgotPasswordMail, sendResetPassMail } from "../utils/mail.js"
-import crypto from "crypto";
 import { ApiResponse } from "../utils/api-response.js";
 import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
+import crypto from "node:crypto";
+import jwt from "jsonwebtoken";
 
-// DEBUGGING - DELETE THIS LATER
+
 
 
 const cookieOptions = {
@@ -17,9 +18,9 @@ const cookieOptions = {
 
 const registerUser = asyncHandler(async (req, res) => {
     const {email, userName, password} = req.body;
-    const existingUser = await User.findOne({email});
+    const existingUser = await User.findOne({email:email});
     if(existingUser){
-        throw new ApiError(422, `User already exists on email ${User.email}`)
+        throw new ApiError(422, `User already exists on email ${existingUser.email}`)
     }
     const user = await User.create({
         userName,
@@ -31,9 +32,6 @@ const registerUser = asyncHandler(async (req, res) => {
     user.emailVerificationToken = hashedToken;
     user.emailVerificationTokenExpiry = tokenExpiry;
     await user.save()
-    console.log(hashedToken);
-    
-    console.log(user);
 
     const verificationUrl = `${process.env.BASE_URL}/api/v1/users/verify/${unHashedToken}`
 
@@ -45,7 +43,7 @@ const registerUser = asyncHandler(async (req, res) => {
 })
 
 const verifyUser = asyncHandler(async (req, res) => {
-    const {unHashedToken} = req.params || {};
+    const {unHashedToken} = req.params;
     if(!unHashedToken){
         throw new ApiError(422, "invalid token")
     }
@@ -61,7 +59,7 @@ const verifyUser = asyncHandler(async (req, res) => {
 
     user.isEmailVerified = true;
     user.emailVerificationToken = ""
-    user.emailVerificationTokenExpiry = ""
+    user.emailVerificationTokenExpiry = null
     await user.save();
 
     return res
@@ -84,7 +82,7 @@ const resendVerifyEmail = asyncHandler(async(req, res) => {
     const verificationUrl = `${process.env.BASE_URL}/api/v1/users/verify/${unHashedToken}`
     await user.save();
 
-    await sendEmailVerificationMail(email, userName, verificationUrl);
+    await sendEmailVerificationMail(user.email, user.userName, verificationUrl);
     return res
     .status(200)
     .json(new ApiResponse(200, null, "THe verification url has been sent to your email"))
@@ -95,7 +93,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     const {newPassword, password} = req.body;
     const isPassValid = await user.isPasswordCorrect(password);
     if(!isPassValid){
-        return new ApiError(400, "Invalid old password")
+        throw new ApiError(400, "Invalid old password")
     }
 
     user.password = newPassword;
@@ -108,11 +106,11 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 })
 
 const forgotPassword = asyncHandler(async (req, res) => {
-    const {email} = req.body
-    const user = User.findOne({email})
+    const {email}=req.body
+    const user=await User.findOne({email})
 
     if(!user){
-        return new ApiError(400, "The email doesnt exist in the db")
+        throw new ApiError(400, "The email doesnt exist in the db")
     }
 
     const {hashedToken, unHashedToken, tokenExpiry} = user.generateTemporaryToken()
@@ -135,25 +133,30 @@ const logInUser = asyncHandler(async(req,res)=>{
         email
     })
 
+    if(!user){
+        throw new ApiError(400, "User not found")
+    }
+
     const isMatched = await user.isPasswordCorrect(password);
-    console.log(isMatched);
+
     
 
     if(!isMatched){
-        return res.json(new ApiResponse(200, null, "Either email or password entered is wrong"))
+        return res.json(new ApiResponse(401, null, "Invalid email or password"))
     }
 
-    const refreshTokenGen = user.generateAccessToken();
+    const refreshTokenGen = user.generateRefreshToken();
     user.refreshToken = refreshTokenGen;
+    console.log(process.env.REFRESH_TOKEN_COOKIE_EXPIRY)
 
     const refreshTokenCookieOptions = {...cookieOptions,
-        maxAge : 10*24*60*60*1000
+        maxAge : process.env.REFRESH_TOKEN_COOKIE_EXPIRY
     };
 
     const accessTokenGen = user.generateAccessToken();
     const accessTokenCookieOptions = {
         ...cookieOptions,
-        maxAge : 15 * 60 * 1000
+        maxAge : process.env.ACCESS_TOKEN_COOKIE_EXPIRY
     };
     await user.save();
     
@@ -180,8 +183,10 @@ const logoutUser = asyncHandler(async(req, res) => {
 })
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
-    const {refreshToken} = req.cookies;
+    let {refreshToken} = req.cookies;
     const decodedToken = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET)
+
+    console.log(decodedToken)
     
     const user = await User.findOne({_id : decodedToken._id})
     if(!user){
@@ -198,11 +203,11 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
     const refreshTokenCookieOptions = {
         ...cookieOptions, 
-        maxAge : 10*24*60*60*1000
+        maxAge : process.env.REFRESH_TOKEN_COOKIE_EXPIRY
     }
     const accessTokenCookieOptions = {
         ...cookieOptions,
-        maxAge : 15*60*1000
+        maxAge : process.env.ACCESS_TOKEN_COOKIE_EXPIRY
     } 
     await user.save()
     return res
@@ -236,7 +241,7 @@ const updateAccountDetails = asyncHandler(async(req,res)=>{
     }
 
     if(newUserName){
-        const isMatched = User.findOne({userName : newUserName});
+        const isMatched =await User.findOne({userName : newUserName});
         if(isMatched){
             return res
             .status(409)
@@ -246,6 +251,7 @@ const updateAccountDetails = asyncHandler(async(req,res)=>{
     }
 
     let isEmailChanged = false;
+    let emailVerificationToken;
 
     if(newEmail){
         const isMatched = await User.findOne({email:newEmail})
@@ -262,13 +268,13 @@ const updateAccountDetails = asyncHandler(async(req,res)=>{
         user.emailVerificationToken = hashedToken;
         user.emailVerificationTokenExpiry = tokenExpiry;
 
-        var emailVerificationToken = unHashedToken;
+        emailVerificationToken = unHashedToken;
     }
 
     await user.save()
 
     if(isEmailChanged){
-        var verificationUrl = `${process.env.BASE_URL}/api/v1/users/verify/${emailVerificationToken}`
+        const verificationUrl = `${process.env.BASE_URL}/api/v1/users/verify/${emailVerificationToken}`
         await sendEmailVerificationMail(user.email, user.userName, verificationUrl)
     }
 
@@ -305,20 +311,18 @@ const uploadUserAvatar = asyncHandler( async (req, res) => {
     if (!avatar) {
         throw new ApiError(500, "Error uploading avatar");
     }
-console.log("Deleting public_id:", user.avatar.publicId);
 
-    const response = await deleteFromCloudinary(user.avatar.publicId)
 
-    
+    await deleteFromCloudinary(user.avatar.publicId)
 
     user.avatar.publicId = avatar.public_id
-    console.log(user.avatar.publicId)
+
     
     await user.save();
 
     return res
     .status(200)
-    .json(new ApiResponse(200, [user.avtar, user.userName, user.email], "Avatar is successfully changed"))
+    .json(new ApiResponse(200, [user.avatar, user.userName, user.email], "Avatar is successfully changed"))
 
 })
 
