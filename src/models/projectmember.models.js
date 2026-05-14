@@ -1,23 +1,28 @@
 import mongoose, { Schema } from "mongoose";
-import { AvailableUserRoles, UserRolesEnum } from "../utils/constants.js"
+import { AvailableUserRoles, UserRolesEnum } from "../utils/constants.js";
 
-const projectmemberSchema = new Schema({
-    user : {
-        type : Schema.Types.ObjectId,
-        ref : "User",
-        required : true
+const projectmemberSchema = new Schema(
+    {
+        user: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+        },
+        project: {
+            type: Schema.Types.ObjectId,
+            ref: "Project",
+            required: true,
+        },
+        role: {
+            type: String,
+            enum: AvailableUserRoles,
+            default: UserRolesEnum.MEMBER,
+        },
     },
-    project : {
-        type : Schema.Types.ObjectId,
-        ref : "Project",
-        required : true
-    },
-    role : {
-        type : String,
-        enum : AvailableUserRoles,
-        default : UserRolesEnum.MEMBER
-    }
-}, {timestamps : true})
+    { timestamps: true },
+);
 
-
-export const Projectmember = mongoose.model("Projectmember", projectmemberSchema)
+export const Projectmember = mongoose.model(
+    "Projectmember",
+    projectmemberSchema,
+);

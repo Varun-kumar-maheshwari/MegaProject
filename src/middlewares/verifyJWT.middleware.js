@@ -3,16 +3,15 @@ import { asyncHandler } from "../utils/asyn-handler.js";
 import jwt from "jsonwebtoken";
 import { User } from "../models/user.models.js";
 
-export const verifyJWT = asyncHandler(async(req, res, next) => {
-    const accessToken = req.cookies?.accessToken
-    const refreshToken = req.cookies?.refreshToken
+export const verifyJWT = asyncHandler(async (req, res, next) => {
+    const accessToken = req.cookies?.accessToken;
+    const refreshToken = req.cookies?.refreshToken;
 
     console.log(refreshToken);
-    if(!accessToken){
-        throw new ApiError(401, "Token is invalid or it is expired")
+    if (!accessToken) {
+        throw new ApiError(401, "Token is invalid or it is expired");
     }
-    
-    
+
     let decodedToken;
     try {
         decodedToken = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
@@ -20,16 +19,14 @@ export const verifyJWT = asyncHandler(async(req, res, next) => {
         throw new ApiError(401, "Token is invalid or it is expired");
     }
     console.log(decodedToken);
-    
-    const user = await User
-    .findOne({
-        _id : decodedToken._id
-    })
-    .select("-password")
 
-    if(!user){
-        throw new ApiError(400, "User not found")
+    const user = await User.findOne({
+        _id: decodedToken._id,
+    }).select("-password");
+
+    if (!user) {
+        throw new ApiError(400, "User not found");
     }
     req.user = user;
     next();
-})
+});
