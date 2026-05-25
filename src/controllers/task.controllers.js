@@ -3,6 +3,8 @@ import { asyncHandler } from "../utils/asyn-handler.js";
 import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { Projectmember } from "../models/projectmember.models.js";
+import { TaskStatusEnum } from "../utils/constants.js";
+import { SubTask } from "../models/subtask.models.js";
 // get all tasks
 const getTasks = asyncHandler(async (req, res) => {
     const user = req.user;
@@ -113,44 +115,139 @@ const createTask = asyncHandler(async (req, res) => {
         title: taskTitle,
     });
 
-    return res.status(200).json(new ApiResponse(200, task, "The task is successfully created."))
+    return res
+        .status(200)
+        .json(new ApiResponse(200, task, "The task is successfully created."));
 });
 
 // update task
 const updateTask = asyncHandler(async (req, res) => {
-    const user = req.user
-    const {taskStatus, taskTitle, taskDescription} = req.body
-    const taskId = req.params
-    let task = Task.findOne({
-        _id : taskId
-    })
-    if(user.role == "member" && task.assignedTo == user._id){
-        task.status = taskStatus;   
+    const user = req.user;
+    const { taskStatus, taskTitle, taskDescription } = req.body;
+    const taskId = req.params;
+    let task = await Task.findOne({
+        _id: taskId,
+    });
+    if (user.role == "member" && task.assignedTo == user._id) {
+        task.status = taskStatus;
     }
-    if((user.role == "projectAdmin" || task.assignedBy == user._id) && task.status  ){
-        task.status = ;
-
+    if (
+        (user.role == "projectAdmin" || task.assignedBy == user._id) &&
+        TaskStatusEnum.includes(taskStatus)
+    ) {
+        task.status = taskStatus;
     }
+    if (user.role == "projectAdmin" || task.assignedBy == user._id) {
+        task.title = taskTitle ? taskTitle : task.title;
+        task.description = taskDescription ? taskDescription : task.description;
+    }
+    task.save();
+    return res
+        .status(200)
+        .json(new ApiResponse(200, task, "The updated task is send"));
 });
 
 // delete task
 const deleteTask = asyncHandler(async (req, res) => {
-    // delete task
+    const user = req.user;
+    const taskId = req.params;
+    const allowedRoles = ["admin", "projectAdmin"];
+
+    if (!allowedRoles.includes(user.role)) {
+        throw new ApiError(401, "Not authorized to delete this task");
+    }
+
+    const result = await Task.deleteOne({
+        _id: taskId,
+    });
+    if (result.deletedCount === 0) {
+        throw new ApiError(400, "Task not found by the provided id");
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                result.deletedCount,
+                "The task was deleted successfully.",
+            ),
+        );
 });
 
 // create subtask
 const createSubTask = asyncHandler(async (req, res) => {
-    // create subtask
+    const user = req.user;
+    const taskId = req.params;
+    const {title} = req.body;
+    const allowedRoles = ["admin", "projectAdmin"];
+
+    if(!allowedRoles.includes(user.role)){
+        throw new ApiError(400, "Not auth to create new sub Tasks ");
+    }
+    const subTask = await SubTask.create({
+        title : title,
+        createdBy : user._id,
+        task : taskId
+    })
+
+    return res.status(200).json(new ApiResponse(200, subTask, "new sub task created"));
+
 });
 
 // update subtask
 const updateSubTask = asyncHandler(async (req, res) => {
-    // update subtask
+    const user = req.user;
+    const { subtaskStatus, subtaskTitle, subtaskDescription } = req.body;
+    const subTaskId = req.params;
+    let subTask = await SubTask.findOne({
+        _id: subTaskId,
+    });
+    if (user.role == "member" && subTask.assignedTo == user._id) {
+        task.status = taskStatus;
+    }
+    if (
+        (user.role == "projectAdmin" || subTask.assignedBy == user._id) &&
+        TaskStatusEnum.includes(subtaskStatus)
+    ) {
+        subTask.status = subtaskStatus;
+    }
+    if (user.role == "projectAdmin" || subTask.assignedBy == user._id) {
+        subTask.title = subtaskTitle ? subtaskTitle : subtask.title;
+        subTask.description = subtaskDescription ? subtaskDescription : subtask.description;
+    }
+    await subTask.save();
+    return res
+        .status(200)
+        .json(new ApiResponse(200, subTask, "The updated subtask is send"));
 });
 
 // delete subtask
 const deleteSubTask = asyncHandler(async (req, res) => {
-    // delete subtask
+    const user = req.user;
+    const subTaskId = req.params;
+    const allowedRoles = ["admin", "projectAdmin"];
+
+    if (!allowedRoles.includes(user.role)) {
+        throw new ApiError(401, "Not authorized to delete this task");
+    }
+
+    const result = await SubTask.deleteOne({
+        _id: subTaskId,
+    });
+    if (result.deletedCount === 0) {
+        throw new ApiError(400, "SubTask not found by the provided id");
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                result.deletedCount,
+                "The subtask was deleted successfully.",
+            ),
+        );
 });
 
 export {
