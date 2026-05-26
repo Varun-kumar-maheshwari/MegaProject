@@ -1,10 +1,22 @@
 @baseUrl = http://localhost:8000/api/v1
 @token = your_jwt_token_here
-@projectId = your_project_id_here
-@memberId = your_member_id_here
+@projectId = 6a15a0b96184a8ed252a498b
+@memberId = 699c5c7965ff60525cf68d87
+@userId = 6a159cecded1a4b897fb8e66
+@taskId = 6a15abe96c3ab5a6ae0f8fe4
+@subTaskId = 6a15ac326c3ab5a6ae0f8ff0
+@noteId = 6a15ac526c3ab5a6ae0f8ff5
+@unHashedToken = your_email_verification_token_here
 
 ### ─────────────────────────────────────
-### AUTH (get a token first)
+### HEALTHCHECK
+### ─────────────────────────────────────
+
+### Healthcheck
+GET {{baseUrl}}/healthcheck
+
+### ─────────────────────────────────────
+### AUTH
 ### ─────────────────────────────────────
 
 ### Register
@@ -12,10 +24,15 @@ POST {{baseUrl}}/users/register
 Content-Type: application/json
 
 {
-  "userName": "testuser",
-  "email": "test@example.com",
+  "userName": "testuser2",
+  "email": "test2@example.com",
   "password": "Password@123"
 }
+
+###
+
+### Verify email
+POST {{baseUrl}}/users/verify/{{unHashedToken}}
 
 ###
 
@@ -28,18 +45,81 @@ Content-Type: application/json
   "password": "Password@123"
 }
 
-### ─────────────────────────────────────
-### PROJECTS  (all require JWT)
-### ─────────────────────────────────────
+###
 
-### Get all projects
-GET {{baseUrl}}/projects
-
+### Logout
+GET {{baseUrl}}/users/logout
+Authorization: Bearer {{token}}
 
 ###
 
-### Create a project
-POST {{baseUrl}}/projects
+### Update account details
+PATCH {{baseUrl}}/users/updateDetails
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "newUserName": "testuser2"
+}
+
+###
+
+### Update avatar
+PATCH {{baseUrl}}/users/updateAvatar
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data
+
+###
+
+### Resend verify email
+POST {{baseUrl}}/users/resendVerifyEmail
+
+###
+
+### Reset password
+POST {{baseUrl}}/users/resetPassword
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "password": "Password@123",
+  "newPassword": "NewPassword@123"
+}
+
+###
+
+### Forgot password
+POST {{baseUrl}}/users/forgotPassword
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+
+###
+
+### Get profile
+GET {{baseUrl}}/users/profile
+Authorization: Bearer {{token}}
+
+###
+
+### Refresh access token
+GET {{baseUrl}}/users/refreshAccessToken
+
+### ─────────────────────────────────────
+### PROJECTS (mounted at /api/v1/projects)
+### ─────────────────────────────────────
+
+### Get all projects
+GET {{baseUrl}}/projects/project
+Authorization: Bearer {{token}}
+
+###
+
+### Create project
+POST {{baseUrl}}/projects/project
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
@@ -47,12 +127,11 @@ Content-Type: application/json
   "description": "A sample project description"
 }
 
-
 ###
 
 ### Get project by ID
 GET {{baseUrl}}/projects/{{projectId}}
-
+Authorization: Bearer {{token}}
 
 ###
 
@@ -70,7 +149,7 @@ Content-Type: application/json
 
 ### Delete project
 DELETE {{baseUrl}}/projects/{{projectId}}
-
+Authorization: Bearer {{token}}
 
 ### ─────────────────────────────────────
 ### PROJECT MEMBERS
@@ -88,7 +167,7 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "userId": "member_user_id_here",
+  "userId": "{{userId}}",
   "role": "member"
 }
 
@@ -100,16 +179,135 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "role": "admin"
+  "newRole": "projectAdmin"
 }
 
 ###
 
 ### Remove member from project
 DELETE {{baseUrl}}/projects/{{projectId}}/members/{{memberId}}
+
+###
+
+### Add member (alternate GET route)
+GET {{baseUrl}}/projects/{{projectId}}/addMember/{{userId}}
+Authorization: Bearer {{token}}
+Authorization: Bearer {{token}}
+
+### ─────────────────────────────────────
+### TASKS
+### ─────────────────────────────────────
+
+### Get tasks for a project
+GET {{baseUrl}}/project/task/{{projectId}}
 Authorization: Bearer {{token}}
 
 ###
 
-### refresh access token
-GET {{baseUrl}}/users/refreshAccessToken
+### Create task in project
+POST {{baseUrl}}/project/task/{{projectId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "taskTitle": "Sample task",
+  "assignedUser": "{{userId}}"
+}
+
+###
+
+### Get task by ID
+GET {{baseUrl}}/project/task/{{projectId}}/{{taskId}}
+Authorization: Bearer {{token}}
+
+###
+
+### Update task
+PATCH {{baseUrl}}/project/task/{{projectId}}/{{taskId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "taskStatus": "in_progress",
+  "taskTitle": "Updated title",
+  "taskDescription": "Updated description"
+}
+
+###
+
+### Delete task
+DELETE {{baseUrl}}/project/task/{{projectId}}/{{taskId}}
+Authorization: Bearer {{token}}
+
+### ─────────────────────────────────────
+### SUBTASKS
+### ─────────────────────────────────────
+
+### Create subtask
+POST {{baseUrl}}/project/task/subtask/{{projectId}}/{{taskId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Sample subtask"
+}
+
+###
+
+### Update subtask
+PATCH {{baseUrl}}/project/task/subtask/{{projectId}}/{{subTaskId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "subtaskStatus": true,
+  "subtaskTitle": "Updated subtask title"
+}
+
+###
+
+### Delete subtask
+DELETE {{baseUrl}}/project/task/subtask/{{projectId}}/{{subTaskId}}
+Authorization: Bearer {{token}}
+
+### ─────────────────────────────────────
+### NOTES
+### ─────────────────────────────────────
+
+### Get note by ID
+GET {{baseUrl}}/project/notes/{{projectId}}/{{noteId}}
+Authorization: Bearer {{token}}
+
+###
+
+### Get notes
+GET {{baseUrl}}/project/notes/{{projectId}}/getNotes
+Authorization: Bearer {{token}}
+
+###
+
+### Create note
+POST {{baseUrl}}/project/notes/{{projectId}}/createNote
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "content": "Note content"
+}
+
+###
+
+### Update note
+PATCH {{baseUrl}}/project/notes/{{projectId}}/{{noteId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "content": "Updated note content"
+}
+
+###
+
+### Delete note
+DELETE {{baseUrl}}/project/notes/{{projectId}}/{{noteId}}
+Authorization: Bearer {{token}}

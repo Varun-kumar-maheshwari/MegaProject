@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { verifyJWT } from "../middlewares/verifyJWT.middleware.js";
-import { verifyUser } from "../controllers/auth.controllers.js";
 import {
     createNote,
     deleteNote,
@@ -8,21 +7,23 @@ import {
     getNotes,
     updateNote,
 } from "../controllers/note.controllers.js";
+import {verifyRole} from "../middlewares/verifyRoles.middleware.js";
 
 const router = Router();
 
 router
-    .route("/porject/:projectId/notes/:noteId")
-    .get(verifyJWT, verifyUser, getNoteById)
-    .patch(verifyJWT, verifyUser, updateNote)
-    .delete(verifyJWT, verifyUser, deleteNote);
+    .route("/:projectId/getNotes")
+    .get(verifyJWT,verifyRole, getNotes);
 
 router
-    .route("/project/:projectId/notes/getNotes")
-    .get(verifyJWT, verifyUser, getNotes);
+    .route("/:projectId/:noteId")
+    .get(verifyJWT, verifyRole, getNoteById)
+    .patch(verifyJWT,verifyRole, updateNote)
+    .delete(verifyJWT,verifyRole, deleteNote);
+
 
 router
-    .route("/project/:projectId/notes/createNote")
-    .post(verifyJWT, verifyUser, createNote);
+    .route("/:projectId/createNote")
+    .post(verifyJWT, verifyRole, createNote);
 
 export default router;

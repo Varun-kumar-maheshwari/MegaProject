@@ -22,7 +22,7 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
 
     const user = await User.findOne({
         _id: decodedToken._id,
-    }).select("-password");
+    });
 
     if (!user) {
         throw new ApiError(400, "User not found");

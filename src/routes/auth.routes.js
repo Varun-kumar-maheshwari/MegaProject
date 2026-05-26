@@ -37,7 +37,7 @@ router.patch(
     upload.single("avatar"),
     uploadUserAvatar,
 );
-router.post("/resendVerifyEmail", resendVerifyEmail);
+router.post("/resendVerifyEmail",verifyJWT, resendVerifyEmail);
 router.post(
     "/resetPassword",
     userPassResetValidator(),

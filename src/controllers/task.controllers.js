@@ -1,19 +1,20 @@
-import { Task } from "../models/task.models.js";
-import { asyncHandler } from "../utils/asyn-handler.js";
-import { ApiError } from "../utils/api-error.js";
-import { ApiResponse } from "../utils/api-response.js";
-import { Projectmember } from "../models/projectmember.models.js";
-import { TaskStatusEnum } from "../utils/constants.js";
-import { SubTask } from "../models/subtask.models.js";
+import {Task} from "../models/task.models.js";
+import {asyncHandler} from "../utils/asyn-handler.js";
+import {ApiError} from "../utils/api-error.js";
+import {ApiResponse} from "../utils/api-response.js";
+import {Projectmember} from "../models/projectmember.models.js";
+import {TaskStatusEnum} from "../utils/constants.js";
+import {SubTask} from "../models/subtask.models.js";
 // get all tasks
 const getTasks = asyncHandler(async (req, res) => {
     const user = req.user;
-    const projectId = req.params;
+    const {projectId} = req.params;
     const allowedRoles = ["admin", "projectAdmin"];
 
     if (!allowedRoles.includes(user.role)) {
         const tasks = await Task.find({
             assignedTo: user._id,
+            project: projectId
         });
         if (!tasks) {
             throw new ApiError(400, "No tasks found for this specific project");
@@ -49,7 +50,7 @@ const getTasks = asyncHandler(async (req, res) => {
 // get task by id
 const getTaskById = asyncHandler(async (req, res) => {
     const user = req.user;
-    const { taskId } = req.params;
+    const {taskId} = req.params;
     const allowedRoles = ["admin", "projectAdmin"];
     if (!allowedRoles.includes(user.role)) {
         const task = await Task.findOne({
@@ -93,8 +94,8 @@ const getTaskById = asyncHandler(async (req, res) => {
 const createTask = asyncHandler(async (req, res) => {
     const allowedRoles = ["admin", "projectAdmin"];
     const user = req.user;
-    const { projectId } = req.params;
-    const { taskTitle, assignedUser } = req.body;
+    const {projectId} = req.params;
+    const {taskTitle, assignedUser} = req.body;
 
     if (!allowedRoles.includes(user.role)) {
         throw new ApiError(401, "Not authorized to create tasks.");
@@ -123,21 +124,20 @@ const createTask = asyncHandler(async (req, res) => {
 // update task
 const updateTask = asyncHandler(async (req, res) => {
     const user = req.user;
-    const { taskStatus, taskTitle, taskDescription } = req.body;
-    const taskId = req.params;
+    const {taskStatus, taskTitle, taskDescription} = req.body;
+    const {taskId} = req.params;
     let task = await Task.findOne({
         _id: taskId,
     });
+    if(!task){
+        throw new ApiError(400, "Task not found")
+    }
     if (user.role == "member" && task.assignedTo == user._id) {
         task.status = taskStatus;
     }
-    if (
-        (user.role == "projectAdmin" || task.assignedBy == user._id) &&
-        TaskStatusEnum.includes(taskStatus)
-    ) {
-        task.status = taskStatus;
-    }
-    if (user.role == "projectAdmin" || task.assignedBy == user._id) {
+
+    if (user.role == "projectAdmin" || task.assignedBy == user._id || user.role == "admin") {
+        task.status = taskStatus ? taskStatus : task.status
         task.title = taskTitle ? taskTitle : task.title;
         task.description = taskDescription ? taskDescription : task.description;
     }
@@ -150,7 +150,7 @@ const updateTask = asyncHandler(async (req, res) => {
 // delete task
 const deleteTask = asyncHandler(async (req, res) => {
     const user = req.user;
-    const taskId = req.params;
+    const {taskId} = req.params;
     const allowedRoles = ["admin", "projectAdmin"];
 
     if (!allowedRoles.includes(user.role)) {
@@ -178,17 +178,17 @@ const deleteTask = asyncHandler(async (req, res) => {
 // create subtask
 const createSubTask = asyncHandler(async (req, res) => {
     const user = req.user;
-    const taskId = req.params;
+    const {taskId} = req.params;
     const {title} = req.body;
     const allowedRoles = ["admin", "projectAdmin"];
 
-    if(!allowedRoles.includes(user.role)){
+    if (!allowedRoles.includes(user.role)) {
         throw new ApiError(400, "Not auth to create new sub Tasks ");
     }
     const subTask = await SubTask.create({
-        title : title,
-        createdBy : user._id,
-        task : taskId
+        title: title,
+        createdBy: user._id,
+        task: taskId
     })
 
     return res.status(200).json(new ApiResponse(200, subTask, "new sub task created"));
@@ -198,23 +198,20 @@ const createSubTask = asyncHandler(async (req, res) => {
 // update subtask
 const updateSubTask = asyncHandler(async (req, res) => {
     const user = req.user;
-    const { subtaskStatus, subtaskTitle, subtaskDescription } = req.body;
-    const subTaskId = req.params;
+    const {subtaskStatus, subtaskTitle} = req.body;
+    const {subTaskId} = req.params;
+    const allowedRoles = ["admin" ,"projectAdmin"]
     let subTask = await SubTask.findOne({
         _id: subTaskId,
     });
-    if (user.role == "member" && subTask.assignedTo == user._id) {
-        task.status = taskStatus;
+    if(!subTask){
+        throw new ApiError(400, "SubTask not found")
     }
-    if (
-        (user.role == "projectAdmin" || subTask.assignedBy == user._id) &&
-        TaskStatusEnum.includes(subtaskStatus)
-    ) {
-        subTask.status = subtaskStatus;
+    if (user.role == "admin" || (user.role == "projectAdmin" && subTask.createdBy == user._id)) {
+        subTask.isCompleted = subtaskStatus;
     }
-    if (user.role == "projectAdmin" || subTask.assignedBy == user._id) {
-        subTask.title = subtaskTitle ? subtaskTitle : subtask.title;
-        subTask.description = subtaskDescription ? subtaskDescription : subtask.description;
+    if (user.role = "admin" || subTask.createdBy == user._id) {
+        subTask.title = subtaskTitle ? subtaskTitle : subTask.title;
     }
     await subTask.save();
     return res
@@ -225,7 +222,7 @@ const updateSubTask = asyncHandler(async (req, res) => {
 // delete subtask
 const deleteSubTask = asyncHandler(async (req, res) => {
     const user = req.user;
-    const subTaskId = req.params;
+    const {subTaskId} = req.params;
     const allowedRoles = ["admin", "projectAdmin"];
 
     if (!allowedRoles.includes(user.role)) {

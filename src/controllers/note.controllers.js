@@ -8,8 +8,6 @@ import { asyncHandler } from "../utils/asyn-handler.js";
 
 const getNotes = asyncHandler(async (req, res) => {
     const { projectId } = req.params;
-    const user = req.user;
-
     const projectNotes = await ProjectNote.find({
         project: projectId,
     });

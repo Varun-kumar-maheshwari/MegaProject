@@ -81,9 +81,6 @@ const resetPasswordMailGenContent = (userName) => {
         body : {
             name : userName,
             intro : `Your password has been changed for ${userName}`,
-                action: {
-                instructions: 'if this was not you reply on this email',
-            },
             outro: 'Need help, or have questions? Just reply to this email, we\'d love to help.'
         }
     }

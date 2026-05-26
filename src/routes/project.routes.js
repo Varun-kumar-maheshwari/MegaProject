@@ -11,6 +11,7 @@ import {
     updateProject,
 } from "../controllers/project.controllers.js";
 import { verifyJWT } from "../middlewares/verifyJWT.middleware.js";
+import {verifyRole} from "../middlewares/verifyRoles.middleware.js";
 
 const router = Router();
 
@@ -20,18 +21,21 @@ router
     .post(verifyJWT, createProject);
 
 router
-    .route("/project/:id")
+    .route("/:projectId")
     .get(verifyJWT, getProjectById)
     .patch(verifyJWT, updateProject)
     .delete(verifyJWT, deleteProject);
 
 router
-    .route("/project/:id/members")
+    .route("/:projectId/members")
     .get(verifyJWT, getProjectMembers)
     .post(verifyJWT, addMemberToProject);
 
+router.route("/:projectId/addMember/:userId")
+    .get(verifyJWT, addMemberToProject)
+
 router
-    .route("/project/:id/members/:memberId")
+    .route("/:projectId/members/:memberId")
     .delete(verifyJWT, deleteMember)
     .patch(verifyJWT, updateMemberRole);
 

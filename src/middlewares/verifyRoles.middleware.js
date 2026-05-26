@@ -2,9 +2,9 @@ import { Projectmember } from "../models/projectmember.models.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/asyn-handler.js";
 
-const verifyRole = asyncHandler(async (req, res, next) => {
+export const verifyRole = asyncHandler(async (req, res, next) => {
     const userId = req.user._id;
-    const { projectId } = req.params;
+    const {projectId} = req.params;
 
     const projectMember = await Projectmember.findOne({
         project: projectId,
@@ -19,3 +19,4 @@ const verifyRole = asyncHandler(async (req, res, next) => {
     req.user.role = projectMember.role;
     next();
 });
+
