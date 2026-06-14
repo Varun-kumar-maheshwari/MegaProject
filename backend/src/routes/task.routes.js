@@ -8,11 +8,13 @@ import {
     getTasks,
     updateSubTask,
     updateTask,
+    getTaskStats
 } from "../controllers/task.controllers.js";
 import { verifyJWT } from "../middlewares/verifyJWT.middleware.js";
 import { verifyRole } from "../middlewares/verifyRoles.middleware.js";
 
 const router = Router();
+router.route("/:taskId/stats").get(getTaskStats)
 
 router
     .route("/:projectId")
@@ -33,5 +35,6 @@ router
     .route("/subtask/:projectId/:subTaskId")
     .patch(verifyJWT, verifyRole, updateSubTask)
     .delete(verifyJWT, verifyRole, deleteSubTask);
+
 
 export default router;

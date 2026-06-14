@@ -5,6 +5,7 @@ import {ApiResponse} from "../utils/api-response.js";
 import {Projectmember} from "../models/projectmember.models.js";
 import {TaskStatusEnum} from "../utils/constants.js";
 import {SubTask} from "../models/subtask.models.js";
+import mongoose from "mongoose";
 // get all tasks
 const getTasks = asyncHandler(async (req, res) => {
     const user = req.user;
@@ -13,21 +14,14 @@ const getTasks = asyncHandler(async (req, res) => {
 
     if (!allowedRoles.includes(user.role)) {
         const tasks = await Task.find({
-            assignedTo: user._id,
-            project: projectId
+            assignedTo: user._id, project: projectId
         });
         if (!tasks) {
             throw new ApiError(400, "No tasks found for this specific project");
         }
         return res
             .status(200)
-            .json(
-                new ApiResponse(
-                    200,
-                    tasks,
-                    "All tasks are send to user that are assigned to user",
-                ),
-            );
+            .json(new ApiResponse(200, tasks, "All tasks are send to user that are assigned to user",),);
     }
 
     const tasks = await Task.find({
@@ -38,13 +32,7 @@ const getTasks = asyncHandler(async (req, res) => {
     }
     return res
         .status(200)
-        .json(
-            new ApiResponse(
-                200,
-                tasks,
-                "All tasks in this project is send to user",
-            ),
-        );
+        .json(new ApiResponse(200, tasks, "All tasks in this project is send to user",),);
 });
 
 // get task by id
@@ -54,24 +42,14 @@ const getTaskById = asyncHandler(async (req, res) => {
     const allowedRoles = ["admin", "projectAdmin"];
     if (!allowedRoles.includes(user.role)) {
         const task = await Task.findOne({
-            _id: taskId,
-            assignedTo: user._id,
+            _id: taskId, assignedTo: user._id,
         });
         if (!task) {
-            throw new ApiError(
-                400,
-                "No tasks are assigned to you or you dont have authorization to see this task",
-            );
+            throw new ApiError(400, "No tasks are assigned to you or you dont have authorization to see this task",);
         }
         return res
             .status(200)
-            .json(
-                new ApiResponse(
-                    200,
-                    task,
-                    "Task with the specified id is sent to the user.",
-                ),
-            );
+            .json(new ApiResponse(200, task, "Task with the specified id is sent to the user.",),);
     }
     const task = await Task.findOne({
         _id: taskId,
@@ -81,13 +59,7 @@ const getTaskById = asyncHandler(async (req, res) => {
     }
     return res
         .status(200)
-        .json(
-            new ApiResponse(
-                200,
-                task,
-                "Task with the specified id is sent to the user.",
-            ),
-        );
+        .json(new ApiResponse(200, task, "Task with the specified id is sent to the user.",),);
 });
 
 // create task
@@ -102,18 +74,14 @@ const createTask = asyncHandler(async (req, res) => {
     }
 
     const user2 = await Projectmember.findOne({
-        user: assignedUser,
-        project: projectId,
+        user: assignedUser, project: projectId,
     });
     if (!user2) {
         throw new ApiError(400, "The user doesnt exist in this project.");
     }
 
     const task = await Task.create({
-        assignedBy: user._id,
-        assignedTo: assignedUser,
-        project: projectId,
-        title: taskTitle,
+        assignedBy: user._id, assignedTo: assignedUser, project: projectId, title: taskTitle,
     });
 
     return res
@@ -129,7 +97,7 @@ const updateTask = asyncHandler(async (req, res) => {
     let task = await Task.findOne({
         _id: taskId,
     });
-    if(!task){
+    if (!task) {
         throw new ApiError(400, "Task not found")
     }
     if (user.role == "member" && task.assignedTo == user._id) {
@@ -166,13 +134,7 @@ const deleteTask = asyncHandler(async (req, res) => {
 
     return res
         .status(200)
-        .json(
-            new ApiResponse(
-                200,
-                result.deletedCount,
-                "The task was deleted successfully.",
-            ),
-        );
+        .json(new ApiResponse(200, result.deletedCount, "The task was deleted successfully.",),);
 });
 
 // create subtask
@@ -186,9 +148,7 @@ const createSubTask = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Not auth to create new sub Tasks ");
     }
     const subTask = await SubTask.create({
-        title: title,
-        createdBy: user._id,
-        task: taskId
+        title: title, createdBy: user._id, task: taskId
     })
 
     return res.status(200).json(new ApiResponse(200, subTask, "new sub task created"));
@@ -200,17 +160,17 @@ const updateSubTask = asyncHandler(async (req, res) => {
     const user = req.user;
     const {subtaskStatus, subtaskTitle} = req.body;
     const {subTaskId} = req.params;
-    const allowedRoles = ["admin" ,"projectAdmin"]
+    const allowedRoles = ["admin", "projectAdmin"]
     let subTask = await SubTask.findOne({
         _id: subTaskId,
     });
-    if(!subTask){
+    if (!subTask) {
         throw new ApiError(400, "SubTask not found")
     }
     if (user.role == "admin" || (user.role == "projectAdmin" && subTask.createdBy == user._id)) {
         subTask.isCompleted = subtaskStatus;
     }
-    if (user.role = "admin" || subTask.createdBy == user._id) {
+    if (user.role == "admin" || subTask.createdBy == user._id) {
         subTask.title = subtaskTitle ? subtaskTitle : subTask.title;
     }
     await subTask.save();
@@ -238,22 +198,54 @@ const deleteSubTask = asyncHandler(async (req, res) => {
 
     return res
         .status(200)
-        .json(
-            new ApiResponse(
-                200,
-                result.deletedCount,
-                "The subtask was deleted successfully.",
-            ),
-        );
+        .json(new ApiResponse(200, result.deletedCount, "The subtask was deleted successfully.",),);
 });
 
+const getTaskStats = asyncHandler(async (req, res) => {
+    const {taskId} = req.params;
+    const stats = await SubTask.aggregate([{
+        $match: {
+            "task": new mongoose.Types.ObjectId(taskId), "isCompleted": false
+        },
+    }, {
+        $group: {
+            _id: "$task", notCompletedCount: {
+                $sum: 1,
+            },
+            subTasksTitle : {
+                $push : "$title"
+            }
+        }
+    }, {
+        $lookup: {
+            from: "tasks", localField: "_id", foreignField: "_id", as: "taskDetails"
+        },
+    }, {
+        $unwind : {
+            path : "$taskDetails"
+        }
+    },
+        {
+        $project: {
+            _id: 0, "taskDetails.title": 1, "taskDetails.status": 1, notCompletedCount: 1, subTasksTitle: 1,
+        }
+    }])
+
+    if(!stats.length){
+        throw new ApiError(404, "No incomplete subtasks remaining for this task")
+    }
+
+    const [objStats] = stats;
+
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, objStats, "The task stats are sent."))
+})
+
 export {
-    createSubTask,
-    createTask,
-    deleteSubTask,
-    deleteTask,
-    getTaskById,
-    getTasks,
-    updateSubTask,
-    updateTask,
+    createSubTask, createTask, deleteSubTask, deleteTask, getTaskById, getTasks, updateSubTask, updateTask, getTaskStats
 };
+
+
+

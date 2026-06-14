@@ -3,7 +3,7 @@
 @projectId = 6a15a0b96184a8ed252a498b
 @memberId = 699c5c7965ff60525cf68d87
 @userId = 6a159cecded1a4b897fb8e66
-@taskId = 6a15abe96c3ab5a6ae0f8fe4
+@taskId = 6a19a070ffb3989ccb563c1d
 @subTaskId = 6a15ac326c3ab5a6ae0f8ff0
 @noteId = 6a15ac526c3ab5a6ae0f8ff5
 @unHashedToken = your_email_verification_token_here
@@ -234,6 +234,11 @@ Content-Type: application/json
 }
 
 ###
+### To get tasks status
+GET {{baseUrl}}/project/task/{{taskId}}/stats
+
+
+###
 
 ### Delete task
 DELETE {{baseUrl}}/project/task/{{projectId}}/{{taskId}}
@@ -249,7 +254,7 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "title": "Sample subtask"
+  "title": "Sample subtask3"
 }
 
 ###
@@ -311,3 +316,5 @@ Content-Type: application/json
 ### Delete note
 DELETE {{baseUrl}}/project/notes/{{projectId}}/{{noteId}}
 Authorization: Bearer {{token}}
+
+
