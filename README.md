@@ -104,4 +104,4 @@ src/
 
 ## License
 
-ISC
+MIT
